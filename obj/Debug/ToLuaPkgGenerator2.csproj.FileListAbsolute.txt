@@ -1,0 +1,6 @@
+c:\users\raloi\documents\visual studio 2017\Projects\ToLuaPkgGenerator2\obj\Debug\ToLuaPkgGenerator2.csprojResolveAssemblyReference.cache
+c:\users\raloi\documents\visual studio 2017\Projects\ToLuaPkgGenerator2\bin\Debug\ToLuaPkgGenerator2.exe.config
+c:\users\raloi\documents\visual studio 2017\Projects\ToLuaPkgGenerator2\bin\Debug\ToLuaPkgGenerator2.exe
+c:\users\raloi\documents\visual studio 2017\Projects\ToLuaPkgGenerator2\bin\Debug\ToLuaPkgGenerator2.pdb
+c:\users\raloi\documents\visual studio 2017\Projects\ToLuaPkgGenerator2\obj\Debug\ToLuaPkgGenerator2.exe
+c:\users\raloi\documents\visual studio 2017\Projects\ToLuaPkgGenerator2\obj\Debug\ToLuaPkgGenerator2.pdb
