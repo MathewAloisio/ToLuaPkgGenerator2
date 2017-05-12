@@ -28,6 +28,11 @@ namespace ToLuaPkgGenerator2 {
         };
         public static Dictionary<string, CClass> flatClasses = new Dictionary<string, CClass>();
 
+        public CClass(string pName) {
+            name = pName;
+            flatClasses[name] = this;
+        }
+
         static public CClass Find(string pName) {
             // FLAW: Flat nature of the dictionary causes ambiguity issues w/ same-named classes from different namespaces.
             return flatClasses.ContainsKey(pName) ? flatClasses[pName] : null;
@@ -84,9 +89,9 @@ namespace ToLuaPkgGenerator2 {
     }
 
     class Program {
-        static private CClass inClass = null;
+        static private CClass inClass = null; // State, must be reset each file.
         static private NamespaceClass globalNamespace = new NamespaceClass();
-        static private NamespaceClass currentNamespace = globalNamespace;
+        static private NamespaceClass currentNamespace = globalNamespace; // State, must be reset each file.
         static private List<string> generatedFiles = new List<string>();
 
         // READ
@@ -105,6 +110,8 @@ namespace ToLuaPkgGenerator2 {
                     Console.WriteLine("Parsing header file \"{0}\"", pPath);
 #endif
                     currentNamespace = globalNamespace; // Reset to global namespace at the start of each file.
+                    inClass = null; // Reset inClass when we enter a new file.
+
                     while(stream.Peek() >= 0) {
                         ParseLine(stream.ReadLine().Trim(), lineNumber);
                         ++lineNumber;
@@ -185,9 +192,8 @@ namespace ToLuaPkgGenerator2 {
                 var lineStrings = line.Split(' ');
                 bool containsClass = line.Contains("class") ? true : false;
                 if (containsClass || line.Contains("struct")) {
-                    currentNamespace.classes.Add(new CClass());
+                    currentNamespace.classes.Add(new CClass(lineStrings[1]));
                     inClass = currentNamespace.classes[currentNamespace.classes.Count - 1];
-                    inClass.name = lineStrings[1];
                     inClass.prefix = containsClass ? "class " : "struct ";
                     inClass.parentName = lineStrings.Length > 4 ? lineStrings[4].Trim() : "";
 
@@ -337,8 +343,8 @@ namespace ToLuaPkgGenerator2 {
 
             // Assign parents to classes.
             foreach (var obj in CClass.flatClasses) {
-                if (obj.Value.name.Length != 0) {
-                    obj.Value.parent = CClass.Find(obj.Value.name);
+                if (obj.Value.parentName.Length != 0) {
+                    obj.Value.parent = CClass.Find(obj.Value.parentName);
                     continue;
                 }
             }
