@@ -179,10 +179,9 @@ namespace ToLuaPkgGenerator2 {
         }
 
         static public void CheckClassAndMembers(string pLine, int pLineNumber, string[] pSubStrings) {
-            int commentIndex = pLine.IndexOf("//");
-            int luaIndex = pLine.IndexOf("lua");
-            if (commentIndex != -1 && luaIndex != -1 && luaIndex > commentIndex) {
-                string line = pLine.Substring(0, commentIndex);
+            string[] tagStrings = pLine.Split(new string[] { "//" }, StringSplitOptions.None);
+            if (tagStrings.Length != 0 && tagStrings[tagStrings.Length - 1].Trim().ToLower() == "lua") {
+                string line = tagStrings[0].Trim();
                 var lineStrings = line.Split(' ');
                 bool containsClass = line.Contains("class") ? true : false;
                 if (containsClass || line.Contains("struct")) {
