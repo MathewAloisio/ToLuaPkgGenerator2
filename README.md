@@ -32,11 +32,15 @@
  - Nested namespaces.
  - Determines start/end of namespace/class scopes to support a wide array of scenarios.
  - Fixed type integers (i.e: uint32_t) are automatically replaced in the pkg files with a type that is guaranteed to be at least the same size. (i.e: uint32_t to long)
- - Enums that are defined on one line. (Scope detection may come in the future.) (i.e: enum MyEnum { One, Two };)
+ - Enums, can extend over multiple lines if properly enclosed with braces {}. i.e:
+ enum MyNumbers { //lua
+	Num1,
+	Num2
+ }; 
  
 # Not supported
  - C++ classes that use multiple inheritance.
- - Method defintions spread amongst multiple lines. (or enum defintions.)
+ - Method defintions spread amongst multiple lines.
  - Nested classes/structs.
  
 # Credits

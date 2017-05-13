@@ -77,6 +77,7 @@ namespace ToLuaPkgGenerator2 {
         static private CClass inClass = null; // State, must be reset each file.
         static private NamespaceClass globalNamespace = new NamespaceClass();
         static private NamespaceClass currentNamespace = globalNamespace; // State, must be reset each file.
+        static private List<string> inEnum = null; // State, must be reset each file. (not really.)
         static private List<string> generatedFiles = new List<string>();
 
         static public readonly Dictionary<string, string> _bannedTypes = new Dictionary<string, string> {
@@ -110,6 +111,7 @@ namespace ToLuaPkgGenerator2 {
 #endif
                     currentNamespace = globalNamespace; // Reset to global namespace at the start of each file.
                     inClass = null; // Reset inClass when we enter a new file.
+                    inEnum = null; // Reset inEnum when we enter a new file.
 
                     while(stream.Peek() >= 0) {
                         ParseLine(stream.ReadLine().Trim(), lineNumber);
@@ -184,6 +186,7 @@ namespace ToLuaPkgGenerator2 {
         }
 
         static public void CheckClassAndMembers(string pLine, int pLineNumber, string[] pSubStrings) {
+            bool skipInEnum = false;
             string[] tagStrings = pLine.Split(new string[] { "//" }, StringSplitOptions.None);
             if (tagStrings.Length != 0 && tagStrings[tagStrings.Length - 1].Trim().ToLower() == "lua") {
                 string line = tagStrings[0].Trim();
@@ -211,14 +214,50 @@ namespace ToLuaPkgGenerator2 {
                             member = member.Replace(_type, Program._bannedTypes[_type]);
                     }
 
-                    if (inClass != null) {
-                        inClass.members.Add(member);
+                    // Check if we're in an enum. (multi-line enum support.)
+                    if (member.Contains("enum") && !member.Contains("class")) { // enum classes not supported.
+                        inEnum = new List<string>();
+                        inEnum.Add(member);
+                        skipInEnum = true;
                     }
-                    else { currentNamespace.members.Add(member); }
+                    else if (inEnum == null) {
+                        if (inClass != null) {
+                            inClass.members.Add(member);
+                        }
+                        else { currentNamespace.members.Add(member); }
+                    }
 
-                    if (currentNamespace.empty)
+                    if (currentNamespace.empty) // Note that enumerations don't count as non-empty
                         _tagNamespaceNotEmpty(currentNamespace);
                 }
+            }
+
+            if (inEnum != null) { // Current in an enum.          
+                if (!skipInEnum) {
+                    // Replace banned types.
+                    string member = tagStrings[0].Trim();
+                    foreach (var _type in Program._bannedTypes.Keys) {
+                        if (member.Contains(_type))
+                            member = member.Replace(_type, Program._bannedTypes[_type]);
+                    }
+
+                    if (member.Contains("}")) { // Enum has been closed.
+                        inEnum.Add(member + Environment.NewLine);
+                        if (inClass != null) {
+                            for (int i = 0; i < inEnum.Count; ++i) {
+                                inClass.members.Add(inEnum[i]);
+                            }
+                        }
+                        else {
+                            for (int i = 0; i < inEnum.Count; ++i) {
+                                currentNamespace.members.Add(inEnum[i]);
+                            }
+                        }
+                        inEnum = null;
+                    }
+                    else { inEnum.Add("\t" + member); }
+                }
+                else { skipInEnum = false; }
             }
 
             if (inClass != null) {
