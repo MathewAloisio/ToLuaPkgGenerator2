@@ -17,19 +17,6 @@ namespace ToLuaPkgGenerator2 {
         public int endingLine = -1;
         public int searchingEnd = 0;
 
-        private static readonly Dictionary<string, string> _bannedTypes = new Dictionary<string, string> {
-            { "GetEntryUserID_", "GetEntryUserID_ @ GetEntryUserID" },
-            { "GetUserID_", "GetUserID_ @ GetUserID" },
-            { "size_t", "long long" },
-            { "uint8_t", "unsigned char" },
-            { "uint16_t", "unsigned short" },
-            { "uint32_t", "unsigned int" },
-            { "uint64_t", "unsigned long long" },
-            { "int8_t", "char" },
-            { "int16_t", "short" },
-            { "int32_t", "int" },
-            { "int64_t", "long long" }
-        };
         public static Dictionary<string, CClass> flatClasses = new Dictionary<string, CClass>();
 
         public CClass(string pName) {
@@ -61,12 +48,7 @@ namespace ToLuaPkgGenerator2 {
             else { pStream.WriteLine(pPadding + prefix + name + " {"); }
 
             // Write class members.
-            foreach (var _member in members) {
-                string member = _member;
-                foreach (var _type in _bannedTypes.Keys) {
-                    if (member.Contains(_type))
-                        member = member.Replace(_type, _bannedTypes[_type]);          
-                }
+            foreach (var member in members) {
                 pStream.WriteLine(pPadding + "\t" + member);
             }
             pStream.WriteLine(pPadding + "};" + Environment.NewLine);
@@ -96,6 +78,20 @@ namespace ToLuaPkgGenerator2 {
         static private NamespaceClass globalNamespace = new NamespaceClass();
         static private NamespaceClass currentNamespace = globalNamespace; // State, must be reset each file.
         static private List<string> generatedFiles = new List<string>();
+
+        static public readonly Dictionary<string, string> _bannedTypes = new Dictionary<string, string> {
+            { "GetEntryUserID_", "GetEntryUserID_ @ GetEntryUserID" },
+            { "GetUserID_", "GetUserID_ @ GetUserID" },
+            { "size_t", "long long" },
+            { "uint8_t", "unsigned char" },
+            { "uint16_t", "unsigned short" },
+            { "uint32_t", "unsigned int" },
+            { "uint64_t", "unsigned long long" },
+            { "int8_t", "char" },
+            { "int16_t", "short" },
+            { "int32_t", "int" },
+            { "int64_t", "long long" }
+        };
 
         // READ
         static public void ReadHeaders(string pDir) {
@@ -208,10 +204,17 @@ namespace ToLuaPkgGenerator2 {
                         _tagNamespaceNotEmpty(currentNamespace);
                 }
                 else {
-                    if (inClass != null) {
-                        inClass.members.Add(line);
+                    // Replace banned types.
+                    string member = line;
+                    foreach (var _type in Program._bannedTypes.Keys) {
+                        if (member.Contains(_type))
+                            member = member.Replace(_type, Program._bannedTypes[_type]);
                     }
-                    else { currentNamespace.members.Add(line); }
+
+                    if (inClass != null) {
+                        inClass.members.Add(member);
+                    }
+                    else { currentNamespace.members.Add(member); }
 
                     if (currentNamespace.empty)
                         _tagNamespaceNotEmpty(currentNamespace);
@@ -342,7 +345,7 @@ namespace ToLuaPkgGenerator2 {
                         File.Delete(filePath);
                     using (var stream = new StreamWriter(File.OpenWrite(filePath))) {
                         generatedFiles.Add(pName);
-                        stream.WriteLine("$/* Add includes here. */" + Environment.NewLine + "$#include \"<CHANGEME>.h\"");
+                        stream.WriteLine("$/* Add includes here. */" + Environment.NewLine + "$#include \"<CHANGEME>.h\"" + Environment.NewLine);
                         stream.WriteLine("$using namespace " + pName + ";");
                         stream.WriteLine(_formatUsingStatements(pName + "::", pNamespace));
 
