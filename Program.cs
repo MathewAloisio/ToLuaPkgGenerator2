@@ -76,7 +76,6 @@ namespace ToLuaPkgGenerator2 {
         public bool empty = true;
         public int endingLine = -1;
         public int searchingEnd = 0;
-        public bool searchingNSStart = false;
 
         public NamespaceClass parent = null;
         public List<CClass> classes = new List<CClass>();
@@ -134,17 +133,19 @@ namespace ToLuaPkgGenerator2 {
             CheckClassAndMembers(pLine, pLineNumber, subStrings);
         }
 
-        static public void CheckNamespace(string pLine, int pLineNumber, string[] pSubStrings) { //TODO: fix me, breaks when ns changes b4 ends found.
+        static public void CheckNamespace(string pLine, int pLineNumber, string[] pSubStrings) {
             if (!pLine.Contains("using") && pLine.Contains("namespace")) {
-                if (!currentNamespace.namespaces.ContainsKey(pSubStrings[1])) // Only create new namespaceclass if one doesn't exist.
+                if (!currentNamespace.namespaces.ContainsKey(pSubStrings[1])) { // Only create new namespaceclass if one doesn't exist.
                     currentNamespace.namespaces[pSubStrings[1]] = new NamespaceClass(pSubStrings[1]);
+                    currentNamespace.namespaces[pSubStrings[1]].parent = currentNamespace;
+                }
 
                 currentNamespace = currentNamespace.namespaces[pSubStrings[1]];
-                if (!pLine.Contains("{")) {
-                    currentNamespace.searchingNSStart = true; // We're now searching for the namespace's opening bracket. (i.e: '{')
-                }
-                else { currentNamespace.searchingEnd = 1; }
-                NamespaceClass.namespacesSeekingEnd.Add(currentNamespace);
+                //if (!pLine.Contains("{")) {
+                //    currentNamespace.searchingEnd = 1; // Opening bracket on same line, set searchingEnd to 1. (i.e: 1 bracket to close.)
+                //}
+                if (currentNamespace.endingLine == -1)
+                    NamespaceClass.namespacesSeekingEnd.Add(currentNamespace);
 #if DEBUG
                 Console.WriteLine("Found namespace-start \"" + pSubStrings[1] + "\". Searching for end!");
 #endif
@@ -152,25 +153,22 @@ namespace ToLuaPkgGenerator2 {
 
             for (int i = NamespaceClass.namespacesSeekingEnd.Count - 1; i >= 0; --i) {
                 var ns = NamespaceClass.namespacesSeekingEnd[i];
-                if (ns.searchingNSStart) {
-                    if (pLine.Contains("{")) {
-                        ns.searchingNSStart = false;
-                        ns.searchingEnd = 1;
-                    }
+                if (pLine.Contains("{") && !pLine.Contains("}")) { // We've found a opening bracket, not belonging to the namespace. Bracket isn't closed on same line.                        
+                    ++ns.searchingEnd; // Step searchingEnd. (i.e: 1 more bracket to close.)
                 }
-                else if (pLine.Contains("{")) { // We've found a opening bracket, not belonging to the namespace.
-                    if (!pLine.Contains("}")) // Bracket isn't closed on same line.
-                        ++ns.searchingEnd; // One more opening bracket to end!
-                }
-                else if (ns.searchingEnd > 0 && pLine.Contains("}")) {
+                else if (ns.searchingEnd > 0 && pLine.Contains("}")) { // Line closes a bracket.
                     --ns.searchingEnd;
-                    if (ns.searchingEnd < 1) {
-                        ns.searchingEnd = 0;
-                        if (ns.parent != null)
+#if DEBUG
+                    if (ns.searchingEnd < 0)
+                        Console.WriteLine("[ERROR] More closing brackets than ending brackets detected!");
+#endif
+                    if (ns.searchingEnd == 0) {              
+                        ns.endingLine = pLineNumber;
+                        if (ns.parent != null) // Can't back out of global namespacae. (i.e: lowest namespace.)
                             currentNamespace = ns.parent;
                         NamespaceClass.namespacesSeekingEnd.RemoveAt(i);
 #if DEBUG
-                        Console.WriteLine("Found namespace-end \"" + ns.name + "\"! Line: " + pLineNumber);
+                        Console.WriteLine("Found namespace-end \"" + ns.name + "\"! Line: " + (pLineNumber + 1));
 #endif
                     }
                 }
@@ -220,6 +218,7 @@ namespace ToLuaPkgGenerator2 {
                     File.Delete(packageFilePath);
                 using (var stream = new StreamWriter(File.OpenWrite(packageFilePath))) {
                     string _name = Path.GetFileNameWithoutExtension(packageFilePath);
+                    Console.WriteLine("Writing global namespace...");
                     generatedFiles.Add(_name);
                     stream.WriteLine("$/* Add includes here. */" + Environment.NewLine + "$#include \"<CHANGEME>.h\"" + Environment.NewLine);
 
@@ -295,10 +294,10 @@ namespace ToLuaPkgGenerator2 {
 
         static public void WriteNamespace(string pName, NamespaceClass pNamespace, StreamWriter pStream = null, string pPadding = "") {
             if (pNamespace.empty) {// Ignore empty namespace(s).
-                Console.WriteLine();
+                Console.WriteLine(pName + " was empty!");
                 return;
             }
-
+            Console.WriteLine("Writing namespace... \"{0}\"", pName);
             if (pStream == null) { // Create file.
                 try {
                     string filePath = pName + "_pkg.pkg";
@@ -329,7 +328,7 @@ namespace ToLuaPkgGenerator2 {
 
         static void Main(string[] pArgs) {
             string directory = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) + "/";
-            Console.WriteLine("Generating pkg files...");
+            Console.WriteLine("Scanning header files...");
 
             // Read all header files and gather class information.
             ReadHeaders(directory);
@@ -353,6 +352,7 @@ namespace ToLuaPkgGenerator2 {
             WriteFiles();
 
             // Write export header.
+            Console.WriteLine("Writing header export file...");
             string headerFilePath = "tolua_export.h";
             if (File.Exists(headerFilePath))
                 File.Delete(headerFilePath);
