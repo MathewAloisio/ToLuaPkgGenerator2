@@ -13,6 +13,10 @@ namespace ToLuaPkgGenerator2 {
         public CClass parent = null;
         public List<string> members = new List<string>();
 
+        // Scope control.
+        public int endingLine = -1;
+        public int searchingEnd = 0;
+
         private static readonly Dictionary<string, string> _bannedTypes = new Dictionary<string, string> {
             { "GetEntryUserID_", "GetEntryUserID_ @ GetEntryUserID" },
             { "GetUserID_", "GetUserID_ @ GetUserID" },
@@ -147,7 +151,7 @@ namespace ToLuaPkgGenerator2 {
                 if (currentNamespace.endingLine == -1)
                     NamespaceClass.namespacesSeekingEnd.Add(currentNamespace);
 #if DEBUG
-                Console.WriteLine("Found namespace-start \"" + pSubStrings[1] + "\". Searching for end!");
+                Console.WriteLine("Found namespace-start \"{0}\". Searching for end! Line: {1}", pSubStrings[1], pLineNumber + 1);
 #endif
             }
 
@@ -156,7 +160,7 @@ namespace ToLuaPkgGenerator2 {
                 if (pLine.Contains("{") && !pLine.Contains("}")) { // We've found a opening bracket, not belonging to the namespace. Bracket isn't closed on same line.                        
                     ++ns.searchingEnd; // Step searchingEnd. (i.e: 1 more bracket to close.)
                 }
-                else if (ns.searchingEnd > 0 && pLine.Contains("}")) { // Line closes a bracket.
+                else if (ns.searchingEnd > 0 && pLine.Contains("}") && !pLine.Contains("{")) { // Line closes a bracket.
                     --ns.searchingEnd;
 #if DEBUG
                     if (ns.searchingEnd < 0)
@@ -195,6 +199,11 @@ namespace ToLuaPkgGenerator2 {
                     inClass.prefix = containsClass ? "class " : "struct ";
                     inClass.parentName = lineStrings.Length > 4 ? lineStrings[4].Trim() : "";
 
+#if DEBUG
+                    Console.WriteLine("Found class-start \"" + inClass.name + "\"! Line: " + (pLineNumber + 1));
+#endif
+
+                    // Tag namespace not-empty.
                     if (currentNamespace.empty)
                         _tagNamespaceNotEmpty(currentNamespace);
                 }
@@ -206,6 +215,27 @@ namespace ToLuaPkgGenerator2 {
 
                     if (currentNamespace.empty)
                         _tagNamespaceNotEmpty(currentNamespace);
+                }
+            }
+
+            if (inClass != null) {
+                // Seek end of class declaration's scope.
+                if (pLine.Contains("{") && !pLine.Contains("}")) { // We've found a opening bracket, not belonging to the namespace. Bracket isn't closed on same line.                        
+                    ++inClass.searchingEnd; // Step searchingEnd. (i.e: 1 more bracket to close.)
+                }
+                else if (inClass.searchingEnd > 0 && pLine.Contains("}") && !pLine.Contains("{")) { // Line closes a bracket.
+                    --inClass.searchingEnd;
+#if DEBUG
+                    if (inClass.searchingEnd < 0)
+                        Console.WriteLine("[ERROR] More closing brackets than ending brackets detected!");
+#endif
+                    if (inClass.searchingEnd == 0) {
+                        inClass.endingLine = pLineNumber;
+#if DEBUG
+                        Console.WriteLine("Found class-end \"" + inClass.name + "\"! Line: " + (pLineNumber + 1));
+#endif
+                        inClass = null;
+                    }
                 }
             }
         }
@@ -248,20 +278,26 @@ namespace ToLuaPkgGenerator2 {
             }
         }
 
-        static private void _loopNamespace(ref List<string> pOut, string pPrefix, Dictionary<string, NamespaceClass> pNamespaces) {
-            foreach (var pair in pNamespaces) {
+        static private void _loopNamespace(ref List<string> pOut, string pPrefix, NamespaceClass pNamespace) {
+            if (pNamespace.empty) // Don't add using directives for empty namespaces.
+                return;
+
+            foreach (var pair in pNamespace.namespaces) {
+                if (pair.Value.empty) // Skip empty namespaces.
+                    continue;
+
                 pOut.Add("$using namespace " + pPrefix + pair.Key + ";");
 
                 if (pair.Value.namespaces.Count > 0) {
                     string nestedPrefix = pPrefix + pair.Key + "::";
-                    _loopNamespace(ref pOut, nestedPrefix, pair.Value.namespaces);
+                    _loopNamespace(ref pOut, nestedPrefix, pair.Value);
                 }
             }
         }
 
-        static private string _formatUsingStatements(string pPrefix, Dictionary<string, NamespaceClass> pNamespaces) {
+        static private string _formatUsingStatements(string pPrefix, NamespaceClass pNamespace) {
             List<string> _out = new List<string>();
-            _loopNamespace(ref _out, pPrefix, pNamespaces);
+            _loopNamespace(ref _out, pPrefix, pNamespace);
             
             return string.Join(Environment.NewLine, _out) + Environment.NewLine;
         }
@@ -307,7 +343,7 @@ namespace ToLuaPkgGenerator2 {
                         generatedFiles.Add(pName);
                         stream.WriteLine("$/* Add includes here. */" + Environment.NewLine + "$#include \"<CHANGEME>.h\"");
                         stream.WriteLine("$using namespace " + pName + ";");
-                        stream.WriteLine(_formatUsingStatements(pName + "::", pNamespace.namespaces));
+                        stream.WriteLine(_formatUsingStatements(pName + "::", pNamespace));
 
                         _WriteNS(stream, pName, pNamespace, pPadding);
                     }
