@@ -31,6 +31,7 @@
  - Namespaces that contain classes or methods with the same name. (One pkg file is generated per namespace to avoid ambiguity related issues.)
  - Nested namespaces.
  - Determines start/end of namespace/class scopes to support a wide array of scenarios.
+ - Fixed type integers (i.e: uint32_t) are automatically replaced in the pkg files with a type that is guaranteed to be at least the same size. (i.e: uint32_t to long)
  
 # Not supported
  - C++ classes that use multiple inheritance.
