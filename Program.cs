@@ -243,29 +243,30 @@ namespace ToLuaPkgGenerator2 {
         // WRITE
         static public void WriteFiles() {
             try {
-                string packageFilePath = "_pkg.pkg";
-                if (File.Exists(packageFilePath))
-                    File.Delete(packageFilePath);
-                using (var stream = new StreamWriter(File.OpenWrite(packageFilePath))) {
-                    string _name = Path.GetFileNameWithoutExtension(packageFilePath);
-                    Console.WriteLine("Writing global namespace...");
-                    generatedFiles.Add(_name);
-                    stream.WriteLine("$/* Add includes here. */" + Environment.NewLine + "$#include \"<CHANGEME>.h\"" + Environment.NewLine);
+                if (globalNamespace.members.Count != 0 || globalNamespace.classes.Count != 0) {
+                    string packageFilePath = "_pkg.pkg";
+                    if (File.Exists(packageFilePath))
+                        File.Delete(packageFilePath);
+                    using (var stream = new StreamWriter(File.OpenWrite(packageFilePath))) {
+                        string _name = Path.GetFileNameWithoutExtension(packageFilePath);
+                        Console.WriteLine("Writing global namespace...");
+                        stream.WriteLine("$/* Add includes here. */" + Environment.NewLine + "$#include \"<CHANGEME>.h\"" + Environment.NewLine);
 
-                    // Write global members.
-                    foreach (var member in globalNamespace.members) {
-                        stream.WriteLine(member);
-                    }
+                        // Write global members.
+                        foreach (var member in globalNamespace.members) {
+                            stream.WriteLine(member);
+                        }
 
-                    // Write global namespace classes.
-                    foreach (var obj in globalNamespace.classes) {
-                        obj.Write(stream, "");
+                        // Write global namespace classes.
+                        foreach (var obj in globalNamespace.classes) {
+                            obj.Write(stream, "");
+                        }
                     }
+                }
 
-                    // Write sub-namespaces.
-                    foreach (var pair in globalNamespace.namespaces) {
-                        WriteNamespace(pair.Key, pair.Value);
-                    }
+                // Write sub-namespaces.
+                foreach (var pair in globalNamespace.namespaces) {
+                    WriteNamespace(pair.Key, pair.Value);
                 }
             }
             catch (Exception exception) {
@@ -400,8 +401,10 @@ namespace ToLuaPkgGenerator2 {
                     stream.WriteLine("#define _TOLUA_EXPORT_HEADER_");
                     stream.WriteLine("#pragma once" + Environment.NewLine);
                     stream.WriteLine("#include \"tolua++.h\"" + Environment.NewLine);
+                    if (globalNamespace.classes.Count != 0 || globalNamespace.members.Count != 0)
+                       stream.WriteLine("TOLUA_API int  tolua__pkg_open(lua_State* tolua_S);"); // Global namespace open method.
                     foreach (var fileName in generatedFiles) {
-                        stream.WriteLine("TOLUA_API int  tolua_" + fileName + "_pkg_open (lua_State* tolua_S);");
+                        stream.WriteLine("TOLUA_API int  tolua_" + fileName + "_pkg_open(lua_State* tolua_S);");
                     }
                     stream.WriteLine("#endif");
                 }
