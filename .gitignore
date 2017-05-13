@@ -43,3 +43,4 @@ Thumbs.db
 *.cache
 *TemporaryGeneratedFile_*.cs
 obj/Debug/ToLuaPkgGenerator.csproj.FileListAbsolute.txt
+obj/Release/ToLuaPkgGenerator2.csproj.FileListAbsolute.txt
