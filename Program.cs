@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Collections.Generic;
 #if DEBUG
 using System.Diagnostics;
@@ -143,9 +144,6 @@ namespace ToLuaPkgGenerator2 {
                 }
 
                 currentNamespace = currentNamespace.namespaces[pSubStrings[1]];
-                //if (!pLine.Contains("{")) {
-                //    currentNamespace.searchingEnd = 1; // Opening bracket on same line, set searchingEnd to 1. (i.e: 1 bracket to close.)
-                //}
                 if (currentNamespace.endingLine == -1)
                     NamespaceClass.namespacesSeekingEnd.Add(currentNamespace);
 #if DEBUG
@@ -155,16 +153,13 @@ namespace ToLuaPkgGenerator2 {
 
             for (int i = NamespaceClass.namespacesSeekingEnd.Count - 1; i >= 0; --i) {
                 var ns = NamespaceClass.namespacesSeekingEnd[i];
-                if (pLine.Contains("{") && !pLine.Contains("}")) { // We've found a opening bracket, not belonging to the namespace. Bracket isn't closed on same line.                        
-                    ++ns.searchingEnd; // Step searchingEnd. (i.e: 1 more bracket to close.)
-                }
-                else if (ns.searchingEnd > 0 && pLine.Contains("}") && !pLine.Contains("{")) { // Line closes a bracket.
-                    --ns.searchingEnd;
+                ns.searchingEnd += pLine.Count(c => c == '{') - pLine.Count(c => c == '}');
+                if (pLine.Contains("}")) { // Line closes a bracket.
 #if DEBUG
                     if (ns.searchingEnd < 0)
                         Console.WriteLine("[ERROR] More closing brackets than ending brackets detected!");
 #endif
-                    if (ns.searchingEnd == 0) {              
+                    if (ns.searchingEnd <= 0) {              
                         ns.endingLine = pLineNumber;
                         if (ns.parent != null) // Can't back out of global namespacae. (i.e: lowest namespace.)
                             currentNamespace = ns.parent;
@@ -215,7 +210,7 @@ namespace ToLuaPkgGenerator2 {
                     }
 
                     // Check if we're in an enum. (multi-line enum support.)
-                    if (member.Contains("enum") && !member.Contains("class")) { // enum classes not supported.
+                    if (member.Contains("enum") && !member.Contains("class") && !(member.Contains("{") && member.Contains("}"))) { // enum classes not supported.
                         inEnum = new List<string>();
                         inEnum.Add(member);
                         skipInEnum = true;
@@ -262,16 +257,13 @@ namespace ToLuaPkgGenerator2 {
 
             if (inClass != null) {
                 // Seek end of class declaration's scope.
-                if (pLine.Contains("{") && !pLine.Contains("}")) { // We've found a opening bracket, not belonging to the namespace. Bracket isn't closed on same line.                        
-                    ++inClass.searchingEnd; // Step searchingEnd. (i.e: 1 more bracket to close.)
-                }
-                else if (inClass.searchingEnd > 0 && pLine.Contains("}") && !pLine.Contains("{")) { // Line closes a bracket.
-                    --inClass.searchingEnd;
+                inClass.searchingEnd += pLine.Count(c => c == '{') - pLine.Count(c => c == '}');
+                if (pLine.Contains("}")) {
 #if DEBUG
                     if (inClass.searchingEnd < 0)
                         Console.WriteLine("[ERROR] More closing brackets than ending brackets detected!");
 #endif
-                    if (inClass.searchingEnd == 0) {
+                    if (inClass.searchingEnd <= 0) {
                         inClass.endingLine = pLineNumber;
 #if DEBUG
                         Console.WriteLine("Found class-end \"" + inClass.name + "\"! Line: " + (pLineNumber + 1));
