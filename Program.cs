@@ -204,9 +204,9 @@ namespace ToLuaPkgGenerator2 {
                 else {
                     // Replace banned types.
                     string member = line;
-                    foreach (var _type in Program._bannedTypes.Keys) {
+                    foreach (var _type in _bannedTypes.Keys) {
                         if (member.Contains(_type))
-                            member = member.Replace(_type, Program._bannedTypes[_type]);
+                            member = member.Replace(_type, _bannedTypes[_type]);
                     }
 
                     // Check if we're in an enum. (multi-line enum support.)
@@ -231,9 +231,9 @@ namespace ToLuaPkgGenerator2 {
                 if (!skipInEnum) {
                     // Replace banned types.
                     string member = tagStrings[0].Trim();
-                    foreach (var _type in Program._bannedTypes.Keys) {
+                    foreach (var _type in _bannedTypes.Keys) {
                         if (member.Contains(_type))
-                            member = member.Replace(_type, Program._bannedTypes[_type]);
+                            member = member.Replace(_type, _bannedTypes[_type]);
                     }
 
                     if (member.Contains("}")) { // Enum has been closed.
