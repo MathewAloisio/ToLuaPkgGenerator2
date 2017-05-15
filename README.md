@@ -42,6 +42,7 @@
  - C++ classes that use multiple inheritance.
  - Method defintions spread amongst multiple lines.
  - Nested classes/structs.
+ - Unions (ToLua++ itself lacks union support.)
  
 # Credits
  - ToLuaPkgGenerator2 - Mathew Aloisio

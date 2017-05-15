@@ -25,6 +25,8 @@ ToLuaPkgGenerator2.exe!ARGS!
 
 :: ToLua source generation & movement.
 echo Generating ToLua bindings...
+
+md %~dp0Source\ToLua 2> nul
 for %%f in (*.pkg) do (
 	tolua++.exe -o %%~nf.cpp %%f
 	move /Y "%%~nf.cpp" "%~dp0Source\ToLua\%%~nf.cpp"
