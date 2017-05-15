@@ -42,9 +42,6 @@
  - C++ classes that use multiple inheritance.
  - Method defintions spread amongst multiple lines.
  - Nested classes/structs.
- - Unpaired brackets in comments ANYWHERE in a file with //lua tags. i.e:
- > DoStuff(); // {
- > DoStuff(); // }
  
 # Credits
  - ToLuaPkgGenerator2 - Mathew Aloisio
