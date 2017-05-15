@@ -144,8 +144,7 @@ namespace ToLuaPkgGenerator2 {
                 }
 
                 currentNamespace = currentNamespace.namespaces[pSubStrings[1]];
-                if (currentNamespace.endingLine == -1)
-                    NamespaceClass.namespacesSeekingEnd.Add(currentNamespace);
+                NamespaceClass.namespacesSeekingEnd.Add(currentNamespace);
 #if DEBUG
                 Console.WriteLine("Found namespace-start \"{0}\". Searching for end! Line: {1}", pSubStrings[1], pLineNumber + 1);
 #endif
@@ -154,6 +153,7 @@ namespace ToLuaPkgGenerator2 {
             for (int i = NamespaceClass.namespacesSeekingEnd.Count - 1; i >= 0; --i) {
                 var ns = NamespaceClass.namespacesSeekingEnd[i];
                 ns.searchingEnd += pLine.Count(c => c == '{') - pLine.Count(c => c == '}');
+
                 if (pLine.Contains("}")) { // Line closes a bracket.
 #if DEBUG
                     if (ns.searchingEnd < 0)
