@@ -353,7 +353,7 @@ namespace ToLuaPkgGenerator2 {
 
             // Write sub-namespaces.
             foreach (var pair in pNamespace.namespaces) {
-                WriteNamespace(pair.Key, pair.Value, pStream, pPadding + "\t\t");
+                WriteNamespace(pair.Key, pair.Value, pStream, pPadding + "\t");
             }
 
             pStream.WriteLine(pPadding + "}");
