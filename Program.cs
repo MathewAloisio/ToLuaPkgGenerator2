@@ -189,7 +189,7 @@ namespace ToLuaPkgGenerator2 {
 
         static public void CheckClassAndMembers(string pLine, int pLineNumber, string[] pSubStrings) {
             bool skipInEnum = false;
-            string[] tagStrings = pLine.Split(new string[] { "//" }, StringSplitOptions.None);
+            string[] tagStrings = pLine.Trim().Split(new string[] { "//" }, StringSplitOptions.RemoveEmptyEntries);
             if (tagStrings.Length != 0 && tagStrings[tagStrings.Length - 1].Trim().ToLower() == "lua") {
                 string line = tagStrings[0].Trim();
                 var lineStrings = line.Split(' ');
