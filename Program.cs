@@ -1,4 +1,11 @@
-﻿using System;
+﻿#define MINIMAL_NAMESPACE_NESTING // Comment this out to enable deep nesting! (i.e: Write a module for every namespace.)
+/* NOTE:
+ * When MINIMAL_NAMESPACE_NESTING is enabled, classes will not be nested in namespaces, and methods/variables will only be nested in the lowest namespace. i.e:
+ * namespace NS1 { namespace NS2 { void MyFunc(); //lua } }
+ * would be accessed in Lua as follows: NS2.MyFunc()
+*/
+
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -213,17 +220,20 @@ namespace ToLuaPkgGenerator2 {
                     if (member.Contains("enum") && !member.Contains("class") && !(member.Contains("{") && member.Contains("}"))) { // enum classes not supported.
                         inEnum = new List<string>();
                         inEnum.Add(member);
+                        if (currentNamespace.empty) // Note that enumerations don't count as non-empty
+                            _tagNamespaceNotEmpty(currentNamespace);
                         skipInEnum = true;
                     }
                     else if (inEnum == null) {
                         if (inClass != null) {
                             inClass.members.Add(member);
                         }
-                        else { currentNamespace.members.Add(member); }
-                    }
-
-                    if (currentNamespace.empty) // Note that enumerations don't count as non-empty
-                        _tagNamespaceNotEmpty(currentNamespace);
+                        else {
+                            currentNamespace.members.Add(member);
+                            if (currentNamespace.empty) // Note that enumerations don't count as non-empty
+                                _tagNamespaceNotEmpty(currentNamespace);
+                        }
+                    }                
                 }
             }
 
@@ -314,14 +324,14 @@ namespace ToLuaPkgGenerator2 {
         }
 
         static private void _loopNamespace(ref List<string> pOut, string pPrefix, NamespaceClass pNamespace) {
+#if !MINIMAL_NAMESPACE_NESTING
             if (pNamespace.empty) // Don't add using directives for empty namespaces.
                 return;
+#endif
 
             foreach (var pair in pNamespace.namespaces) {
-                if (pair.Value.empty) // Skip empty namespaces.
-                    continue;
-
-                pOut.Add("$using namespace " + pPrefix + pair.Key + ";");
+                if (!pair.Value.empty) // Skip empty namespaces.
+                    pOut.Add("$using namespace " + pPrefix + pair.Key + ";");
 
                 if (pair.Value.namespaces.Count > 0) {
                     string nestedPrefix = pPrefix + pair.Key + "::";
@@ -339,13 +349,17 @@ namespace ToLuaPkgGenerator2 {
 
         static private void _WriteNS(StreamWriter pStream, string pName, NamespaceClass pNamespace, string pPadding) {
             // Write module tag.
-            pStream.WriteLine(pPadding + "module " + pName + " {" + Environment.NewLine);
+#if MINIMAL_NAMESPACE_NESTING
+            if (pNamespace.members.Count > 0)
+#endif
+                pStream.WriteLine(pPadding + "module " + pName + " {" + Environment.NewLine);
 
             // Write members.
             foreach (var member in pNamespace.members) {
                 pStream.WriteLine(pPadding + "\t" + member);
             }
 
+#if !MINIMAL_NAMESPACE_NESTING
             // Write classes.
             foreach (var obj in pNamespace.classes) {
                 obj.Write(pStream, pPadding + "\t");
@@ -355,13 +369,36 @@ namespace ToLuaPkgGenerator2 {
             foreach (var pair in pNamespace.namespaces) {
                 WriteNamespace(pair.Key, pair.Value, pStream, pPadding + "\t");
             }
+#endif
 
-            pStream.WriteLine(pPadding + "}");
+#if MINIMAL_NAMESPACE_NESTING
+            if (pNamespace.members.Count > 0)
+#endif
+                pStream.WriteLine(pPadding + "}");
+
+#if MINIMAL_NAMESPACE_NESTING
+            // Write sub-namespaces.
+            foreach (var pair in pNamespace.namespaces) {
+                WriteNamespace(pair.Key, pair.Value, pStream, pPadding);
+            }
+#endif
 
             // Remove a single tab from padding.
             int lastTab = pPadding.LastIndexOf('\t');
             pPadding = pPadding.Substring(0, lastTab == -1 ? pPadding.Length : lastTab);
         }
+
+#if MINIMAL_NAMESPACE_NESTING
+        static private void _loopClasses(StreamWriter pStream, NamespaceClass pNamespace) {
+            foreach (var _class in pNamespace.classes) {
+                _class.Write(pStream, "");
+            }
+
+            foreach (var pair in pNamespace.namespaces) {
+                _loopClasses(pStream, pair.Value);
+            }
+        }
+#endif
 
         static public void WriteNamespace(string pName, NamespaceClass pNamespace, StreamWriter pStream = null, string pPadding = "") {
             if (pNamespace.empty) {// Ignore empty namespace(s).
@@ -379,6 +416,11 @@ namespace ToLuaPkgGenerator2 {
                         stream.WriteLine("$/* Add includes here. */" + Environment.NewLine + "$#include \"<CHANGEME>.h\"" + Environment.NewLine);
                         stream.WriteLine("$using namespace " + pName + ";");
                         stream.WriteLine(_formatUsingStatements(pName + "::", pNamespace));
+
+#if MINIMAL_NAMESPACE_NESTING
+                        // Write classes.
+                        _loopClasses(stream, pNamespace);
+#endif
 
                         _WriteNS(stream, pName, pNamespace, pPadding);
                     }
