@@ -8,12 +8,48 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 #if DEBUG
 using System.Diagnostics;
 #endif
 
 namespace ToLuaPkgGenerator2 {
+    public class OrderedDict<T, K> {
+        public OrderedDictionary UnderlyingCollection { get; set; } = new OrderedDictionary();
+
+        public K this[T key] {
+            get {
+                return (K)UnderlyingCollection[key];
+            }
+            set {
+                UnderlyingCollection[key] = value;
+            }
+        }
+
+        public K this[int index] {
+            get {
+                return (K)UnderlyingCollection[index];
+            }
+            set {
+                UnderlyingCollection[index] = value;
+            }
+        }
+        public ICollection<T> Keys => UnderlyingCollection.Keys.OfType<T>().ToList();
+        public ICollection<K> Values => UnderlyingCollection.Values.OfType<K>().ToList();
+        public bool IsReadOnly => UnderlyingCollection.IsReadOnly;
+        public int Count => UnderlyingCollection.Count;
+        public IDictionaryEnumerator GetEnumerator() => UnderlyingCollection.GetEnumerator();
+        public void Insert(int index, T key, K value) => UnderlyingCollection.Insert(index, key, value);
+        public void RemoveAt(int index) => UnderlyingCollection.RemoveAt(index);
+        public bool Contains(T key) => UnderlyingCollection.Contains(key);
+        public void Add(T key, K value) => UnderlyingCollection.Add(key, value);
+        public void Clear() => UnderlyingCollection.Clear();
+        public void Remove(T key) => UnderlyingCollection.Remove(key);
+        public void CopyTo(Array array, int index) => UnderlyingCollection.CopyTo(array, index);
+    }
+
     class CClass {
         public string name;
         public string prefix;
@@ -88,19 +124,7 @@ namespace ToLuaPkgGenerator2 {
         static private List<string> inEnum = null; // State, must be reset each file. (not really.)
         static private List<string> generatedFiles = new List<string>();
 
-        static public readonly Dictionary<string, string> _bannedTypes = new Dictionary<string, string> {
-            { "GetEntryUserID_", "GetEntryUserID_ @ GetEntryUserID" },
-            { "GetUserID_", "GetUserID_ @ GetUserID" },
-            { "size_t", "long long" },
-            { "uint8_t", "unsigned char" },
-            { "uint16_t", "unsigned short" },
-            { "uint32_t", "unsigned int" },
-            { "uint64_t", "unsigned long long" },
-            { "int8_t", "char" },
-            { "int16_t", "short" },
-            { "int32_t", "int" },
-            { "int64_t", "long long" }
-        };
+        static public OrderedDict<string, string> _bannedTypes = new OrderedDict<string, string>();
 
         // READ
         static public void ReadHeaders(string pDir) {
@@ -440,6 +464,28 @@ namespace ToLuaPkgGenerator2 {
         }
 
         static void Main(string[] pArgs) {
+            // Create ordered dictionary of banned types.
+            _bannedTypes.Add("GetEntryUserID_", "GetEntryUserID_ @ GetEntryUserID");
+            _bannedTypes.Add("GetUserID_", "GetUserID_ @ GetUserID");
+            _bannedTypes.Add("std::size_t", "long long");
+            _bannedTypes.Add("std::uint8_t", "unsigned char");
+            _bannedTypes.Add("std::uint16_t", "unsigned short");
+            _bannedTypes.Add("std::uint32_t", "unsigned int");
+            _bannedTypes.Add("std::uint64_t", "unsigned long long");
+            _bannedTypes.Add("std::int8_t", "char");
+            _bannedTypes.Add("std::int16_t", "short");
+            _bannedTypes.Add("std::int32_t", "int");
+            _bannedTypes.Add("std::int64_t", "long long");
+            _bannedTypes.Add("size_t", "long long");
+            _bannedTypes.Add("uint8_t", "unsigned char");
+            _bannedTypes.Add("uint16_t", "unsigned short");
+            _bannedTypes.Add("uint32_t", "unsigned int");
+            _bannedTypes.Add("uint64_t", "unsigned long long");
+            _bannedTypes.Add("int8_t", "char");
+            _bannedTypes.Add("int16_t", "short");
+            _bannedTypes.Add("int32_t", "int");
+            _bannedTypes.Add("int64_t", "long long");
+
             string directory = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) + "/";
             Console.WriteLine("Scanning header files...");
 
