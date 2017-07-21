@@ -36,7 +36,9 @@
  
  enum MyNumbers { //lua
     Num1,  
-    Num2  
+    
+    Num2
+    
  };
  
 # Not supported
@@ -46,8 +48,11 @@
  - (Technically) Unions (ToLua++ itself lacks union support.) However you can expose unions like so (Notice how the C++ code on the last line is commented out.):
 
  union { float x, r; }
+ 
  union { float y, g; }
+ 
  union { float z, b; }
+ 
  //float x, r, y, g, z, b; //lua
  
  In the future an update may be released to make the generator do this implicitly.
