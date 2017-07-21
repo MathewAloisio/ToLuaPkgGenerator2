@@ -34,7 +34,7 @@
  - Fixed type integers (i.e: uint32_t) are automatically replaced in the pkg files with a type that is guaranteed to be at least the same size. (i.e: uint32_t to long)
  - Enums, can extend over multiple lines if properly enclosed with braces {}. i.e:
  >
- ```c++
+ ```cpp
  enum MyNumbers { //lua
     Num1,
     Num2
@@ -47,7 +47,7 @@
  - Nested classes/structs.
  - (Technically) Unions (ToLua++ itself lacks union support.) However you can expose unions like so (Notice how the C++ code on the last line is commented out.):
  >
- ```c++
+ ```cpp
  union { float x, r; }
  union { float y, g; }
  union { float z, b; }
