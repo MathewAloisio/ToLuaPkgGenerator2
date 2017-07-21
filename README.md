@@ -33,20 +33,22 @@
  - Determines start/end of namespace/class scopes to support a wide array of scenarios.
  - Fixed type integers (i.e: uint32_t) are automatically replaced in the pkg files with a type that is guaranteed to be at least the same size. (i.e: uint32_t to long)
  - Enums, can extend over multiple lines if properly enclosed with braces {}. i.e:
- ```enum MyNumbers { //lua```
- ```	Num1,```
- ```	Num2```
- ```};``` 
+ 
+ enum MyNumbers { //lua
+    Num1,  
+    Num2
+ };
  
 # Not supported
  - C++ classes that use multiple inheritance.
  - Method defintions spread amongst multiple lines.
  - Nested classes/structs.
  - (Technically) Unions (ToLua++ itself lacks union support.) However you can expose unions like so (Notice how the C++ code on the last line is commented out.):
- ```union { float x, r; }```
- ```union { float y, g; }```
- ```union { float z, b; }```
- ```//float x, r, y, g, z, b; //lua```
+
+ union { float x, r; }
+ union { float y, g; }
+ union { float z, b; }
+ //float x, r, y, g, z, b; //lua
  
  In the future an update may be released to make the generator do this implicitly.
  
