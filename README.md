@@ -34,13 +34,10 @@
  - Fixed type integers (i.e: uint32_t) are automatically replaced in the pkg files with a type that is guaranteed to be at least the same size. (i.e: uint32_t to long)
  - Enums, can extend over multiple lines if properly enclosed with braces {}. i.e:
  >
- ```enum MyNumbers { //lua```
- >
- ```	Num1,```
- >
- ```	Num2```
- >
- ```};``` 
+ ```enum MyNumbers { //lua
+    Num1,
+    Num2
+ };``` 
  
 # Not supported
  - C++ classes that use multiple inheritance.
