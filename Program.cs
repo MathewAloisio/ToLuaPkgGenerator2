@@ -472,6 +472,8 @@ namespace ToLuaPkgGenerator2 {
             _bannedTypes.Add("std::uint16_t", "unsigned short");
             _bannedTypes.Add("std::uint32_t", "unsigned int");
             _bannedTypes.Add("std::uint64_t", "unsigned long long");
+            _bannedTypes.Add("std::ios_base::iostate", "unsigned long");
+            _bannedTypes.Add("std::ios_base::openmode", "unsigned long");
             _bannedTypes.Add("std::int8_t", "char");
             _bannedTypes.Add("std::int16_t", "short");
             _bannedTypes.Add("std::int32_t", "int");
@@ -481,6 +483,8 @@ namespace ToLuaPkgGenerator2 {
             _bannedTypes.Add("uint16_t", "unsigned short");
             _bannedTypes.Add("uint32_t", "unsigned int");
             _bannedTypes.Add("uint64_t", "unsigned long long");
+            _bannedTypes.Add("ios_base::iostate", "unsigned long");
+            _bannedTypes.Add("ios_base::openmode", "unsigned long");
             _bannedTypes.Add("int8_t", "char");
             _bannedTypes.Add("int16_t", "short");
             _bannedTypes.Add("int32_t", "int");
