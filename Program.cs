@@ -75,7 +75,7 @@ namespace ToLuaPkgGenerator2 {
 
         private bool written = false;
         public void Write(StreamWriter pStream, string pPadding) {
-            if (written)
+            if (written || members.Count == 0)
                 return;
 
             // Write base classes first.
