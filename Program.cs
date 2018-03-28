@@ -250,6 +250,18 @@ namespace ToLuaPkgGenerator2 {
                     }
                     else if (inEnum == null) {
                         if (inClass != null) {
+                            // Check for & remove '= default'.
+                            string spacelessString = member.Replace(" ", "");
+                            if (spacelessString.Contains("=default")) {
+                                // Find '= default' occurance and remove it. NOTE: Only supports only = default per line.
+                                int startIndex = member.LastIndexOf('=');
+                                int finalIndex = member.IndexOf("default", startIndex);
+                                if (startIndex != -1 && finalIndex != -1) {
+                                    member = member.Substring(0, startIndex).Trim() + ';';
+                                }
+                                else { Console.WriteLine("WARNING: Failed to resolve '= default' overload for member: \"{0}\"", member); }
+                            }
+
                             inClass.members.Add(member);
                         }
                         else {
