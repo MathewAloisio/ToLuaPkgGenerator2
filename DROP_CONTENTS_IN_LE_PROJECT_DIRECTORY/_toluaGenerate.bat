@@ -28,8 +28,9 @@ echo Generating ToLua bindings...
 
 md %~dp0Source\ToLua 2> nul
 for %%f in (*.pkg) do (
-	tolua++.exe -o %%~nf.cpp %%f
+	toluapp.exe -o %%~nf.cpp %%f
 	move /Y "%%~nf.cpp" "%~dp0Source\ToLua\%%~nf.cpp"
+	echo No|move /-y "%%~nf_includes.h" "%~dp0Source\ToLua\%%~nf_includes.h"
 )
 ::FixToLuaNamespaces "%~dp0Source\ToLua\%%~nf.cpp" :: THIS BREAKS EVERYTHING WHEN COMMENTED IN LOOPS ), move above ) and uncomment to enable.
 move /Y "tolua_export.h" "%~dp0Source\ToLua\tolua_export.h"

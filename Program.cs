@@ -117,11 +117,27 @@ namespace ToLuaPkgGenerator2 {
         public NamespaceClass(string pName = "") { name = pName; }
     }
 
+    enum EnumerateType {
+        Unscoped,
+        Scoped
+    };
+
+    class Enumerate {
+        public Enumerate(EnumerateType pType) {
+            type = pType;
+            members = new List<string>();
+        }
+
+        public EnumerateType type;
+        public List<string> members;
+    };
+
     class Program {
         static private CClass inClass = null; // State, must be reset each file.
         static private NamespaceClass globalNamespace = new NamespaceClass();
         static private NamespaceClass currentNamespace = globalNamespace; // State, must be reset each file.
-        static private List<string> inEnum = null; // State, must be reset each file. (not really.)
+        static private Enumerate inEnum = null; // State, must be reset each file.
+        static private List<string> inTemplate = null; // State, must be reset each file.
         static private List<string> generatedFiles = new List<string>();
 
         static public OrderedDict<string, string> _bannedTypes = new OrderedDict<string, string>();
@@ -144,6 +160,7 @@ namespace ToLuaPkgGenerator2 {
                     currentNamespace = globalNamespace; // Reset to global namespace at the start of each file.
                     inClass = null; // Reset inClass when we enter a new file.
                     inEnum = null; // Reset inEnum when we enter a new file.
+                    inTemplate = null; //Reset inTemplate when we enter a new file.
 
                     while(stream.Peek() >= 0) {
                         ParseLine(stream.ReadLine().Trim(), lineNumber);
@@ -212,13 +229,14 @@ namespace ToLuaPkgGenerator2 {
         }
 
         static public void CheckClassAndMembers(string pLine, int pLineNumber, string[] pSubStrings) {
-            bool skipInEnum = false;
+            bool skipInEnum = false; // For single-line enum support.
+            bool skipInTemplate = false; // For single-line template support.
             string[] tagStrings = pLine.Trim().Split(new string[] { "//" }, StringSplitOptions.RemoveEmptyEntries);
             if (tagStrings.Length != 0 && tagStrings[tagStrings.Length - 1].Trim().ToLower() == "lua") {
                 string line = tagStrings[0].Trim();
                 var lineStrings = line.Split(' ');
                 bool containsClass = line.Contains("class") ? true : false;
-                if (containsClass || line.Contains("struct")) {
+                if (!line.Contains("enum") && (containsClass || line.Contains("struct"))) {
                     currentNamespace.classes.Add(new CClass(lineStrings[1]));
                     inClass = currentNamespace.classes[currentNamespace.classes.Count - 1];
                     inClass.prefix = containsClass ? "class " : "struct ";
@@ -240,40 +258,50 @@ namespace ToLuaPkgGenerator2 {
                             member = member.Replace(_type, _bannedTypes[_type]);
                     }
 
-                    // Check if we're in an enum. (multi-line enum support.)
-                    if (member.Contains("enum") && !member.Contains("class") && !(member.Contains("{") && member.Contains("}"))) { // enum classes not supported.
-                        inEnum = new List<string>();
-                        inEnum.Add(member);
-                        if (currentNamespace.empty) // Note that enumerations don't count as non-empty
+                    // Check if we're entering a template. (multi-line template support.)
+                    if (member.Contains("template") && !(member.Contains("{") && member.Contains("}"))) {
+                        inTemplate = new List<string>();
+                        inTemplate.Add(member);
+                        if (currentNamespace.empty)
                             _tagNamespaceNotEmpty(currentNamespace);
-                        skipInEnum = true;
+                        skipInTemplate = true;
                     }
-                    else if (inEnum == null) {
-                        if (inClass != null) {
-                            // Check for & remove '= default'.
-                            string spacelessString = member.Replace(" ", "");
-                            if (spacelessString.Contains("=default")) {
-                                // Find '= default' occurance and remove it. NOTE: Only supports only = default per line.
-                                int startIndex = member.LastIndexOf('=');
-                                int finalIndex = member.IndexOf("default", startIndex);
-                                if (startIndex != -1 && finalIndex != -1) {
-                                    member = member.Substring(0, startIndex).Trim() + ';';
-                                }
-                                else { Console.WriteLine("WARNING: Failed to resolve '= default' overload for member: \"{0}\"", member); }
-                            }
-
-                            inClass.members.Add(member);
-                        }
-                        else {
-                            currentNamespace.members.Add(member);
-                            if (currentNamespace.empty) // Note that enumerations don't count as non-empty
+                    else {
+                        // Check if we're entering an enum. (multi-line enum support.)
+                        if (member.Contains("enum") && !(member.Contains("{") && member.Contains("}"))) {
+                            inEnum = new Enumerate(member.Contains("class") ? EnumerateType.Scoped : EnumerateType.Unscoped);
+                            inEnum.members.Add(member);
+                            if (inEnum.type == EnumerateType.Scoped && currentNamespace.empty)
                                 _tagNamespaceNotEmpty(currentNamespace);
+                            skipInEnum = true;
                         }
-                    }                
+                        else if (inEnum == null && inTemplate == null) {
+                            if (inClass != null) {
+                                // Check for & remove '= default'.
+                                string spacelessString = member.Replace(" ", "");
+                                if (spacelessString.Contains("=default")) {
+                                    // Find '= default' occurance and remove it. NOTE: Only supports only = default per line.
+                                    int startIndex = member.LastIndexOf('=');
+                                    int finalIndex = member.IndexOf("default", startIndex);
+                                    if (startIndex != -1 && finalIndex != -1) {
+                                        member = member.Substring(0, startIndex).Trim() + ';';
+                                    }
+                                    else { Console.WriteLine("WARNING: Failed to resolve '= default' overload for member: \"{0}\"", member); }
+                                }
+
+                                inClass.members.Add(member);
+                            }
+                            else {
+                                currentNamespace.members.Add(member);
+                                if (currentNamespace.empty)
+                                    _tagNamespaceNotEmpty(currentNamespace);
+                            }
+                        }
+                    }
                 }
             }
 
-            if (inEnum != null) { // Current in an enum.          
+            if (inEnum != null) { // Currently in an enum.          
                 if (!skipInEnum) {
                     // Replace banned types.
                     string member = tagStrings[0].Trim();
@@ -283,22 +311,49 @@ namespace ToLuaPkgGenerator2 {
                     }
 
                     if (member.Contains("}")) { // Enum has been closed.
-                        inEnum.Add(member + Environment.NewLine);
+                        inEnum.members.Add(member + Environment.NewLine);
                         if (inClass != null) {
-                            for (int i = 0; i < inEnum.Count; ++i) {
-                                inClass.members.Add(inEnum[i]);
+                            for (int i = 0; i < inEnum.members.Count; ++i) {
+                                inClass.members.Add(inEnum.members[i]);
                             }
                         }
                         else {
-                            for (int i = 0; i < inEnum.Count; ++i) {
-                                currentNamespace.members.Add(inEnum[i]);
+                            for (int i = 0; i < inEnum.members.Count; ++i) {
+                                currentNamespace.members.Add(inEnum.members[i]);
                             }
                         }
                         inEnum = null;
                     }
-                    else { inEnum.Add("\t" + member); }
+                    else { inEnum.members.Add("\t" + member); }
                 }
                 else { skipInEnum = false; }
+            }
+            else if (inTemplate != null) { // Currently in a template.
+                if (!skipInTemplate) {
+                    // Replace banned types.
+                    string member = tagStrings[0].Trim();
+                    foreach (var _type in _bannedTypes.Keys) {
+                        if (member.Contains(_type))
+                            member = member.Replace(_type, _bannedTypes[_type]);
+                    }
+
+                    if (member.Contains("}")) { // Template has been closed.
+                        inTemplate.Add(member + Environment.NewLine);
+                        if (inClass != null) {
+                            for (int i = 0; i < inTemplate.Count; ++i) {
+                                inClass.members.Add(inTemplate[i]);
+                            }
+                        }
+                        else {
+                            for (int i = 0; i < inTemplate.Count; ++i) {
+                                currentNamespace.members.Add(inTemplate[i]);
+                            }
+                        }
+                        inTemplate = null;
+                    }
+                    else { inTemplate.Add("\t" + member); }
+                }
+                else { skipInTemplate = false; }
             }
 
             if (inClass != null) {
@@ -322,6 +377,30 @@ namespace ToLuaPkgGenerator2 {
 
         // WRITE
         static public void WriteFiles() {
+            string headerFilePath = "_pkg_includes.h";
+            string headerIncludeGuard = "_TOLUA_EXPORT_HEADER_" + Path.GetFileNameWithoutExtension(headerFilePath).ToUpper();
+            if (!File.Exists(headerFilePath)) {
+                try {
+                    using (StreamWriter stream = new StreamWriter(File.Create(headerFilePath))) {
+                        stream.WriteLine("// ToLua++ Include Header");
+                        stream.WriteLine("// *This file was generated automatically by ToLuaPkgGenerator2 by Mathew Aloisio.*");
+                        stream.WriteLine("#ifndef " + headerIncludeGuard);
+                        stream.WriteLine("#define " + headerIncludeGuard);
+                        stream.WriteLine("#pragma once" + Environment.NewLine);
+                        stream.WriteLine(Environment.NewLine);
+                        stream.WriteLine("#endif");
+                    }
+                }
+                catch (Exception exception) {
+                    Console.WriteLine("EXCEPTION:" + exception);
+#if DEBUG
+                StackTrace trace = new StackTrace(exception, true);
+                Console.WriteLine("\tFILE:" + trace.GetFrame(0).GetFileName());
+                Console.WriteLine("\tLINE: " + trace.GetFrame(0).GetFileLineNumber());
+#endif
+                }
+            }
+            // Write global namespace pkg file.
             try {
                 if (globalNamespace.members.Count != 0 || globalNamespace.classes.Count != 0) {
                     string packageFilePath = "_pkg.pkg";
@@ -330,7 +409,7 @@ namespace ToLuaPkgGenerator2 {
                     using (var stream = new StreamWriter(File.OpenWrite(packageFilePath))) {
                         string _name = Path.GetFileNameWithoutExtension(packageFilePath);
                         Console.WriteLine("Writing global namespace...");
-                        stream.WriteLine("$/* Add includes here. */" + Environment.NewLine + "$#include \"<CHANGEME>.h\"" + Environment.NewLine);
+                        stream.WriteLine("$/* Add includes in \"_pkg_includes.h\". */" + Environment.NewLine + "$#include \"_pkg_includes.h\"" + Environment.NewLine);
 
                         // Write global members.
                         foreach (var member in globalNamespace.members) {
@@ -443,13 +522,37 @@ namespace ToLuaPkgGenerator2 {
             }
             Console.WriteLine("Writing namespace... \"{0}\"", pName);
             if (pStream == null) { // Create file.
+                string headerFilePath = pName + "_pkg_includes.h";
+                string headerIncludeGuard = "_TOLUA_EXPORT_HEADER_" + Path.GetFileNameWithoutExtension(headerFilePath).ToUpper();
+                if (!File.Exists(headerFilePath)) {
+                    try {
+                        using (StreamWriter stream = new StreamWriter(File.Create(headerFilePath))) {
+                            stream.WriteLine("// ToLua++ Include Header");
+                            stream.WriteLine("// *This file was generated automatically by ToLuaPkgGenerator2 by Mathew Aloisio.*");
+                            stream.WriteLine("#ifndef " + headerIncludeGuard);
+                            stream.WriteLine("#define " + headerIncludeGuard);
+                            stream.WriteLine("#pragma once" + Environment.NewLine);
+                            stream.WriteLine(Environment.NewLine);
+                            stream.WriteLine("#endif");
+                        }
+                    }
+                    catch (Exception exception) {
+                        Console.WriteLine("EXCEPTION:" + exception);
+#if DEBUG
+                StackTrace trace = new StackTrace(exception, true);
+                Console.WriteLine("\tFILE:" + trace.GetFrame(0).GetFileName());
+                Console.WriteLine("\tLINE: " + trace.GetFrame(0).GetFileLineNumber());
+#endif
+                    }
+                }
+
                 try {
                     string filePath = pName + "_pkg.pkg";
                     if (File.Exists(filePath))
                         File.Delete(filePath);
                     using (var stream = new StreamWriter(File.OpenWrite(filePath))) {
                         generatedFiles.Add(pName);
-                        stream.WriteLine("$/* Add includes here. */" + Environment.NewLine + "$#include \"<CHANGEME>.h\"" + Environment.NewLine);
+                        stream.WriteLine("$/* Add includes in \"" + headerFilePath + "\". */" + Environment.NewLine + "$#include \"" + headerFilePath + "\"" + Environment.NewLine);
                         stream.WriteLine("$using namespace " + pName + ";");
                         stream.WriteLine(_formatUsingStatements(pName + "::", pNamespace));
 
