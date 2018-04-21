@@ -1,6 +1,6 @@
 ﻿#define MINIMAL_NAMESPACE_NESTING // Comment this out to enable deep nesting! (i.e: Write a module for every namespace.)
 /* NOTE:
- * When MINIMAL_NAMESPACE_NESTING is enabled, classes will not be nested in namespaces, and methods/variables will only be nested in the lowest namespace. i.e:
+ * When MINIMAL_NAMESPACE_NESTING is enabled, classes and scoped enumerates will not be nested in namespaces, and methods/variables will only be nested in the lowest namespace. i.e:
  * namespace NS1 { namespace NS2 { void MyFunc(); //lua } }
  * would be accessed in Lua as follows: NS2.MyFunc()
 */
@@ -110,6 +110,9 @@ namespace ToLuaPkgGenerator2 {
         public NamespaceClass parent = null;
         public List<CClass> classes = new List<CClass>();
         public List<string> members = new List<string>();
+#if MINIMAL_NAMESPACE_NESTING
+        public List<Enumerate> enumerates = new List<Enumerate>();
+#endif
         public Dictionary<string, NamespaceClass> namespaces = new Dictionary<string, NamespaceClass>();
 
         public static List<NamespaceClass> namespacesSeekingEnd = new List<NamespaceClass>();
@@ -320,9 +323,14 @@ namespace ToLuaPkgGenerator2 {
                             }
                         }
                         else {
+#if MINIMAL_NAMESPACE_NESTING
+                            if (inEnum.members.Count != 0)
+                                currentNamespace.enumerates.Add(inEnum);
+#else
                             for (int i = 0; i < inEnum.members.Count; ++i) {
                                 currentNamespace.members.Add(inEnum.members[i]);
                             }
+#endif
                         }
                         inEnum = null;
                     }
@@ -488,12 +496,20 @@ namespace ToLuaPkgGenerator2 {
             }
 #endif
 
+            // Close the namespace.
 #if MINIMAL_NAMESPACE_NESTING
             if (pNamespace.members.Count > 0)
 #endif
                 pStream.WriteLine(pPadding + "}");
 
 #if MINIMAL_NAMESPACE_NESTING
+            // Write enumeration classes.
+            foreach (var enumerate in pNamespace.enumerates) {
+                foreach (var line in enumerate.members) {
+                    pStream.WriteLine(line);
+                }
+            }
+
             // Write sub-namespaces.
             foreach (var pair in pNamespace.namespaces) {
                 WriteNamespace(pair.Key, pair.Value, pStream, pPadding);
