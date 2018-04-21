@@ -229,10 +229,12 @@ namespace ToLuaPkgGenerator2 {
         }
 
         static public void CheckClassAndMembers(string pLine, int pLineNumber, string[] pSubStrings) {
+            if (pLine.TrimStart().StartsWith("//")) return; // Comment only.
             bool skipInEnum = false; // For single-line enum support.
             bool skipInTemplate = false; // For single-line template support.
             string[] tagStrings = pLine.Trim().Split(new string[] { "//" }, StringSplitOptions.RemoveEmptyEntries);
-            if (tagStrings.Length != 0 && tagStrings[tagStrings.Length - 1].Trim().ToLower() == "lua") {
+            if (tagStrings.Length == 0) return;
+            if (tagStrings[tagStrings.Length - 1].Trim().ToLower() == "lua") {
                 string line = tagStrings[0].Trim();
                 var lineStrings = line.Split(' ');
                 bool containsClass = line.Contains("class") ? true : false;
