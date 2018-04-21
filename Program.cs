@@ -229,7 +229,7 @@ namespace ToLuaPkgGenerator2 {
         }
 
         static public void CheckClassAndMembers(string pLine, int pLineNumber, string[] pSubStrings) {
-            if (pLine.TrimStart().StartsWith("//")) return; // Comment only.
+            if (pLine.TrimStart().StartsWith("//") && !pLine.TrimStart().Contains("lua")) return; // Comment only.
             bool skipInEnum = false; // For single-line enum support.
             bool skipInTemplate = false; // For single-line template support.
             string[] tagStrings = pLine.Trim().Split(new string[] { "//" }, StringSplitOptions.RemoveEmptyEntries);
