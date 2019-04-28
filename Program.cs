@@ -291,9 +291,11 @@ namespace ToLuaPkgGenerator2 {
                                 }
                                 else {
                                     // Check for and remove assignment.
-                                    int startIndex = member.IndexOf('=');
-                                    int closeIndex = member.IndexOf(';');
-                                    member = member.Remove(startIndex, closeIndex - startIndex);
+                                    int lastEqualsIndex = member.LastIndexOf('=');
+                                    int lastClosingBracketIndex = member.LastIndexOf(')');
+                                    int closeIndex = member.LastIndexOf(';');
+                                    if (lastEqualsIndex != -1 && lastEqualsIndex > lastClosingBracketIndex)
+                                        member = member.Remove(lastEqualsIndex, closeIndex - lastEqualsIndex);
 
                                     inClass.members.Add(member);
                                 }
