@@ -282,19 +282,21 @@ namespace ToLuaPkgGenerator2 {
                         }
                         else if (inEnum == null && inTemplate == null) {
                             if (inClass != null) {
-                                // Check for & remove '= default'.
-                                string spacelessString = member.Replace(" ", "");
-                                if (spacelessString.Contains("=default")) {
-                                    // Find '= default' occurance and remove it. NOTE: Only supports only = default per line.
-                                    int startIndex = member.LastIndexOf('=');
-                                    int finalIndex = member.IndexOf("default", startIndex);
-                                    if (startIndex != -1 && finalIndex != -1) {
-                                        member = member.Substring(0, startIndex).Trim() + ';';
-                                    }
-                                    else { Console.WriteLine("WARNING: Failed to resolve '= default' overload for member: \"{0}\"", member); }
-                                }
+                                if (member.Contains("DECLARE_ENTITY_CLASS")) {
+                                    // Read class name from line.
+                                    int startIndex = member.IndexOf('(') + 1;
+                                    int closeIndex = member.IndexOf(')');
 
-                                inClass.members.Add(member);
+                                    inClass.members.Add("static " + member.Substring(startIndex, closeIndex - startIndex) + "* Create();");
+                                }
+                                else {
+                                    // Check for and remove assignment.
+                                    int startIndex = member.IndexOf('=');
+                                    int closeIndex = member.IndexOf(';');
+                                    member = member.Remove(startIndex, closeIndex - startIndex);
+
+                                    inClass.members.Add(member);
+                                }
                             }
                             else {
                                 currentNamespace.members.Add(member);
@@ -598,6 +600,7 @@ namespace ToLuaPkgGenerator2 {
 
         static void Main(string[] pArgs) {
             // Create ordered dictionary of banned types.
+            _bannedTypes.Add("constexpr", "const");
             _bannedTypes.Add("GetEntryUserID_", "GetEntryUserID_ @ GetEntryUserID");
             _bannedTypes.Add("GetUserID_", "GetUserID_ @ GetUserID");
             _bannedTypes.Add("std::size_t", "long long");
