@@ -1,5 +1,7 @@
-﻿# Windows only!
+##Notice
+ - Although I still use this sometimes, it is no longer updated. It has been deprecated in favor of a C++ version that handles more modern C++ types, and better handles a wider variety of custom C++ types.
 
+# Windows only!
 # Installation Instructions (For Leadwerks)
 
   1. Empty the contents of 'DROP_CONTENTS_IN_LE_PROJECT_DIRECTORY' into your LE project's main directory. (I.E: *Documents/Leadwerks/Projects/<ProjectName>/*)
